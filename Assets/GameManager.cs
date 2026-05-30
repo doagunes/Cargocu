@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
+using System.Collections;
 
 [System.Serializable]
 public struct Shift
@@ -16,10 +17,10 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
-    [Header("Vardiya (Level) Ayarlarý")]
+    [Header("Vardiya (Level) Ayarlarï¿½")]
     public Shift[] shifts;
     private int currentShiftIndex = 0;
-    private bool isLevelCompleted = false; // YENÝ: Levelin defalarca bitmesini engellemek için
+    private bool isLevelCompleted = false; // YENï¿½: Levelin defalarca bitmesini engellemek iï¿½in
 
     float timeRemaining;
     bool gameStarted = false;
@@ -30,14 +31,18 @@ public class GameManager : MonoBehaviour
     [SerializeField] Text timerText;
     [SerializeField] GameObject startPanel;
     [SerializeField] GameObject gameOverPanel;
-    public Text currentLevelText; // YENÝ: Sol altta yazacak level yazýsý
+    [SerializeField] AudioSource audioSource;
+    [SerializeField] AudioClip levelCompleteSound;
+    [SerializeField] AudioClip gameOverSound;
+
+    public Text currentLevelText; // YENï¿½: Sol altta yazacak level yazï¿½sï¿½
 
     [Header("Duraklatma ve Seviye UI")]
     public GameObject pausePanel;
     public GameObject levelsPanel;
     public Button[] levelButtons;
 
-    [Header("Kargo Üretim (Spawn) Ayarlarý")]
+    [Header("Kargo ï¿½retim (Spawn) Ayarlarï¿½")]
     public GameObject packagePrefab;
     public Transform[] spawnPoints;
 
@@ -56,13 +61,13 @@ public class GameManager : MonoBehaviour
         else
             timeRemaining = 120f;
 
-        // Sol alt level yazýsýný güncelle
+        // Sol alt level yazï¿½sï¿½nï¿½ gï¿½ncelle
         if (currentLevelText != null)
         {
             currentLevelText.text = "Level " + (currentShiftIndex + 1);
         }
 
-        UpdateLevelButtons(); // Butonlarýn kilidini ayarlayan yardýmcý fonksiyon
+        UpdateLevelButtons(); // Butonlarï¿½n kilidini ayarlayan yardï¿½mcï¿½ fonksiyon
 
         Time.timeScale = 0f;
         if (startPanel != null) startPanel.SetActive(true);
@@ -73,7 +78,7 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        // ESC'ye basýldýðýnda, oyun oynanýyorsa ve level bitmemiþse menüyü aç/kapat
+        // ESC'ye basï¿½ldï¿½ï¿½ï¿½nda, oyun oynanï¿½yorsa ve level bitmemiï¿½se menï¿½yï¿½ aï¿½/kapat
         if (Input.GetKeyDown(KeyCode.Escape) && gameStarted && !gameOver && !isLevelCompleted)
         {
             TogglePause();
@@ -94,6 +99,12 @@ public class GameManager : MonoBehaviour
         {
             gameOver = true;
             timeRemaining = 0;
+
+            if (gameOverSound != null)
+            {
+                AudioSource.PlayClipAtPoint(gameOverSound, Vector3.zero);
+            }
+
             if (gameOverPanel != null) gameOverPanel.SetActive(true);
         }
     }
@@ -121,7 +132,7 @@ public class GameManager : MonoBehaviour
 
     public void CheckShiftProgress(int currentScore)
     {
-        // Eðer level zaten bittiyse (menü açýldýysa) skoru tekrar kontrol etme
+        // Eï¿½er level zaten bittiyse (menï¿½ aï¿½ï¿½ldï¿½ysa) skoru tekrar kontrol etme
         if (isLevelCompleted) return;
 
         if (currentScore >= shifts[currentShiftIndex].targetScore)
@@ -130,30 +141,42 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // --- YENÝ: LEVEL BÝTÝÞ KONTROLÜ ---
+    // --- YENï¿½: LEVEL Bï¿½Tï¿½ï¿½ KONTROLï¿½ ---
     private void LevelCompleted()
+{
+    if (isLevelCompleted) return;
+
+    isLevelCompleted = true;
+
+    if (audioSource != null && levelCompleteSound != null)
     {
-        isLevelCompleted = true;
-
-        // Bir sonraki level'ýn kilidini aç ve kaydet
-        int nextLevel = currentShiftIndex + 1;
-        int maxUnlocked = PlayerPrefs.GetInt("UnlockedLevel", 0);
-
-        if (nextLevel > maxUnlocked && nextLevel < shifts.Length)
-        {
-            PlayerPrefs.SetInt("UnlockedLevel", nextLevel);
-        }
-
-        UpdateLevelButtons(); // Yeni açýlan levelýn butonunu anýnda aktif et
-
-        // Oyunu durdur ve Bölümler (Levels) menüsünü aç
-        isPaused = true;
-        Time.timeScale = 0f;
-        if (pausePanel != null) pausePanel.SetActive(false);
-        if (levelsPanel != null) levelsPanel.SetActive(true);
+        audioSource.PlayOneShot(levelCompleteSound);
     }
 
-    // --- MENÜ, SEVÝYE VE KAYIT KONTROL FONKSÝYONLARI ---
+    StartCoroutine(OpenLevelsMenuAfterSound());
+}
+IEnumerator OpenLevelsMenuAfterSound()
+{
+    yield return new WaitForSeconds(0.7f);
+
+    int nextLevel = currentShiftIndex + 1;
+    int maxUnlocked = PlayerPrefs.GetInt("UnlockedLevel", 0);
+
+    if (nextLevel > maxUnlocked && nextLevel < shifts.Length)
+    {
+        PlayerPrefs.SetInt("UnlockedLevel", nextLevel);
+    }
+
+    UpdateLevelButtons();
+
+    isPaused = true;
+    Time.timeScale = 0f;
+
+    if (pausePanel != null) pausePanel.SetActive(false);
+    if (levelsPanel != null) levelsPanel.SetActive(true);
+}
+
+    // --- MENï¿½, SEVï¿½YE VE KAYIT KONTROL FONKSï¿½YONLARI ---
     private void UpdateLevelButtons()
     {
         int unlockedLevel = PlayerPrefs.GetInt("UnlockedLevel", 0);
@@ -189,15 +212,15 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    // YENÝ: Ýlerlemeyi sýfýrlama butonu için fonksiyon
+    // YENï¿½: ï¿½lerlemeyi sï¿½fï¿½rlama butonu iï¿½in fonksiyon
     public void ResetAllProgress()
     {
         PlayerPrefs.SetInt("UnlockedLevel", 0);
         PlayerPrefs.SetInt("SelectedLevel", 0);
-        UpdateLevelButtons(); // Butonlarý anýnda kilitle
+        UpdateLevelButtons(); // Butonlarï¿½ anï¿½nda kilitle
     }
 
-    // --- DÝNAMÝK KARGO OLUÞTURMA SÝSTEMÝ ---
+    // --- Dï¿½NAMï¿½K KARGO OLUï¿½TURMA Sï¿½STEMï¿½ ---
     private void SpawnPackages()
     {
         if (packagePrefab == null || spawnPoints.Length == 0) return;
